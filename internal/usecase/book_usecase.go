@@ -25,17 +25,18 @@ type BookUseCase interface {
 
 // bookInteractor は BookUseCase の実装です
 type bookInteractor struct {
-	repo domain.BookRepository
+	repo  domain.BookRepository
+	idGen domain.IDGenerator
 }
 
-func NewBookUseCase(repo domain.BookRepository) BookUseCase {
-	return &bookInteractor{repo: repo}
+func NewBookUseCase(repo domain.BookRepository, idGen domain.IDGenerator) BookUseCase {
+	return &bookInteractor{repo: repo, idGen: idGen}
 }
 
 func (i *bookInteractor) CreateBook(ctx context.Context, input CreateBookInput) (*CreateBookOutput, error) {
 	// ドメインモデルの生成
 	// IDの生成ロジックは本来どこかで定義しますが、一旦仮のIDを渡します
-	book, err := domain.NewBook(domain.BookID("temp-id"), input.Title, input.Price, input.ISBN)
+	book, err := domain.NewBook(i.idGen.Generate(), input.Title, input.Price, input.ISBN)
 	if err != nil {
 		return nil, err
 	}

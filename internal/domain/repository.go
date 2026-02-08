@@ -7,3 +7,7 @@ type BookRepository interface {
 	FindByID(ctx context.Context, id BookID) (*Book, error)
 	FindAll(ctx context.Context) ([]*Book, error)
 }
+
+type IDGenerator interface {
+	Generate() BookID
+}
