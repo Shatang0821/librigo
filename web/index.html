@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Librigo - Book Registration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #fff;
+            width: 18px;
+            height: 18px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col items-center py-12 px-4">
+
+    <!-- メインコンテナ -->
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100">
+        
+        <!-- ヘッダーデザイン -->
+        <div class="bg-indigo-600 p-8 text-white text-center">
+            <h1 class="text-2xl font-black tracking-tight mb-1">Librigo Admin</h1>
+            <p class="text-indigo-100 text-sm">新しい書籍を蔵書に追加します</p>
+        </div>
+
+        <!-- フォームエリア -->
+        <form id="bookForm" class="p-8 space-y-6">
+            
+            <!-- 書籍タイトル -->
+            <div class="space-y-2">
+                <label for="title" class="block text-sm font-bold text-slate-700">書籍タイトル</label>
+                <input type="text" id="title" required placeholder="例: Go Programming Master"
+                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all">
+            </div>
+
+            <!-- 価格とISBNの並び -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <label for="price" class="block text-sm font-bold text-slate-700">価格 (円)</label>
+                    <input type="number" id="price" required placeholder="3500"
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all">
+                </div>
+                <div class="space-y-2">
+                    <label for="isbn" class="block text-sm font-bold text-slate-700">ISBN</label>
+                    <input type="text" id="isbn" required placeholder="978-4-..."
+                        class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all">
+                </div>
+            </div>
+
+            <!-- 送信ボタン -->
+            <button type="submit" id="submitBtn"
+                class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] flex justify-center items-center gap-2">
+                <span>蔵書に登録する</span>
+            </button>
+
+        </form>
+
+        <!-- フィードバックエリア -->
+        <div id="statusMessage" class="px-8 pb-8 hidden">
+            <div id="statusContent" class="p-4 rounded-xl text-sm font-medium flex items-center gap-3">
+                <!-- アイコンとメッセージがここに入ります -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 補足情報 -->
+    <p class="mt-8 text-slate-400 text-xs text-center">
+        Backend: http://localhost:8080/books<br>
+        Method: POST | Content-Type: application/json
+    </p>
+
+    <script>
+        const bookForm = document.getElementById('bookForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const statusContent = document.getElementById('statusContent');
+
+        bookForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // フォームデータの取得
+            const payload = {
+                title: document.getElementById('title').value,
+                price: parseInt(document.getElementById('price').value),
+                isbn: document.getElementById('isbn').value
+            };
+
+            // UI状態の更新（ローディング）
+            setLoading(true);
+            hideMessage();
+
+            try {
+                // バックエンドAPIへのリクエスト
+                const response = await fetch('http://localhost:8080/books', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`サーバーエラー: ${response.status}`);
+                }
+
+                // 成功時の処理
+                showMessage('success', '書籍を正常に登録しました！');
+                bookForm.reset();
+
+            } catch (error) {
+                // 失敗時の処理
+                console.error(error);
+                showMessage('error', '登録に失敗しました。サーバーが起動しているか確認してください。');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // 状態表示ユーティリティ
+        function setLoading(isLoading) {
+            if (isLoading) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<div class="loading-spinner"></div><span>送信中...</span>';
+                submitBtn.classList.add('opacity-70');
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>蔵書に登録する</span>';
+                submitBtn.classList.remove('opacity-70');
+            }
+        }
+
+        function showMessage(type, text) {
+            statusMessage.classList.remove('hidden');
+            if (type === 'success') {
+                statusContent.className = 'p-4 rounded-xl text-sm font-medium flex items-center gap-3 bg-emerald-50 text-emerald-700 border border-emerald-100';
+                statusContent.innerHTML = '✅ ' + text;
+            } else {
+                statusContent.className = 'p-4 rounded-xl text-sm font-medium flex items-center gap-3 bg-red-50 text-red-700 border border-red-100';
+                statusContent.innerHTML = '❌ ' + text;
+            }
+        }
+
+        function hideMessage() {
+            statusMessage.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
