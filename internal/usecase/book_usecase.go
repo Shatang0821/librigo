@@ -35,7 +35,6 @@ func NewBookUseCase(repo domain.BookRepository, idGen domain.IDGenerator) BookUs
 
 func (i *bookInteractor) CreateBook(ctx context.Context, input CreateBookInput) (*CreateBookOutput, error) {
 	// ドメインモデルの生成
-	// IDの生成ロジックは本来どこかで定義しますが、一旦仮のIDを渡します
 	book, err := domain.NewBook(i.idGen.Generate(), input.Title, input.Price, input.ISBN)
 	if err != nil {
 		return nil, err

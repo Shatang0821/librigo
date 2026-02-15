@@ -2,16 +2,24 @@ package main
 
 import (
 	"fmt"
-	infrastructure "librigo/internal/infrastructure/repository"
+	"librigo/internal/infrastructure/database"
+	"librigo/internal/infrastructure/repository"
 	"librigo/internal/interface/handler"
 	"librigo/internal/usecase"
+	"log"
 	"net/http"
 )
 
 func main() {
+	// データベース接続の初期化
+	db, err := database.NewPostgresDB()
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
 	// インフラ層の初期化
-	idGen := infrastructure.NewUUIDGenerator()
-	repo := infrastructure.NewInMemoryBookRepository()
+	idGen := repository.NewUUIDGenerator()
+	repo := repository.NewPostgresRepository(db)
 
 	// ユースケース層の初期化
 	bookUseCase := usecase.NewBookUseCase(repo, idGen)

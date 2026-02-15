@@ -6,13 +6,17 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - db
+      db:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
     environment:
       - DB_HOST=db
       - DB_PORT=5432
       - DB_USER=user
       - DB_PASSWORD=password
       - DB_NAME=librigo
+
   db:
     image: postgres:17-alpine
     container_name: librigo-db
@@ -25,6 +29,19 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./migrations:/migrations
+    command:
+      [
+        "-path=/migrations",
+        "-database=postgres://user:password@db:5432/librigo?sslmode=disable",
+        "up"
+      ]
+    depends_on:
+      - db
 
 volumes:
   postgres_data:
