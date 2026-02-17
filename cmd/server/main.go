@@ -30,7 +30,14 @@ func main() {
 	// ルーティング設定
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.Dir("web"))) // 静的ファイルの提供
+	// 書籍登録
 	mux.HandleFunc("POST /books", bookHandler.Create)
+	// 書籍一覧取得
+	mux.HandleFunc("GET /books", bookHandler.List)
+	// 書籍詳細取得
+	mux.HandleFunc("GET /books/{id}", bookHandler.Get)
+
+	// ヘルスチェック
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
 	})
