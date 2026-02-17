@@ -18,9 +18,19 @@ type CreateBookOutput struct {
 	Title string
 }
 
+// BookOutput は書籍の出力データです
+type BookOutput struct {
+	ID    string
+	Title string
+	Price int
+	ISBN  string
+}
+
 // BookUseCase は書籍に関するユースケースを定義するインターフェースです
 type BookUseCase interface {
 	CreateBook(ctx context.Context, input CreateBookInput) (*CreateBookOutput, error)
+	GetAllBooks(ctx context.Context) ([]*BookOutput, error)
+	GetBookByID(ctx context.Context, id string) (*BookOutput, error)
 }
 
 // bookInteractor は BookUseCase の実装です
@@ -49,5 +59,41 @@ func (i *bookInteractor) CreateBook(ctx context.Context, input CreateBookInput) 
 	return &CreateBookOutput{
 		ID:    string(book.ID),
 		Title: book.Title,
+	}, nil
+}
+
+func (i *bookInteractor) GetAllBooks(ctx context.Context) ([]*BookOutput, error) {
+	books, err := i.repo.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var outputs []*BookOutput
+	for _, b := range books {
+		outputs = append(outputs, &BookOutput{
+			ID:    string(b.ID),
+			Title: b.Title,
+			Price: b.Price,
+			ISBN:  b.ISBN,
+		})
+	}
+	return outputs, nil
+}
+
+func (i *bookInteractor) GetBookByID(ctx context.Context, id string) (*BookOutput, error) {
+	book, err := i.repo.FindByID(ctx, domain.BookID(id))
+	if err != nil {
+		return nil, err
+	}
+
+	if book == nil {
+		return nil, domain.ErrBookNotFound
+	}
+
+	return &BookOutput{
+		ID:    string(book.ID),
+		Title: book.Title,
+		Price: book.Price,
+		ISBN:  book.ISBN,
 	}, nil
 }
