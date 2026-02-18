@@ -3,7 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"librigo/internal/domain"
+	"librigo/internal/domain/apperror"
 	"librigo/internal/usecase"
 	"net/http"
 )
@@ -41,7 +41,8 @@ type BookResponse struct {
 func (h *BookHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateBookRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		// TODO 一時的に
+		RespondWithError(w, apperror.New(err, "INVALID_REQUEST_BODY", apperror.TypeInvalid))
 		return
 	}
 
@@ -53,11 +54,7 @@ func (h *BookHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	output, err := h.useCase.CreateBook(r.Context(), input)
 	if err != nil {
-		if errors.Is(err, domain.ErrInvalidBookTitle) || errors.Is(err, domain.ErrInvalidBookPrice) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		RespondWithError(w, err)
 		return
 	}
 
@@ -76,7 +73,7 @@ func (h *BookHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *BookHandler) List(w http.ResponseWriter, r *http.Request) {
 	outputs, err := h.useCase.GetAllBooks(r.Context())
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		RespondWithError(w, err)
 		return
 	}
 
@@ -92,17 +89,14 @@ func (h *BookHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *BookHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		http.Error(w, "ID is required", http.StatusBadRequest)
+		// TODO 一時的に
+		RespondWithError(w, apperror.New(errors.New("ID is required"), "MISSING_ID", apperror.TypeInvalid))
 		return
 	}
 
 	output, err := h.useCase.GetBookByID(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, domain.ErrBookNotFound) {
-			http.Error(w, "Book not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		RespondWithError(w, err)
 		return
 	}
 

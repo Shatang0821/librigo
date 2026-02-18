@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"context"
-	"librigo/internal/domain"
+	bookdomain "librigo/internal/domain/book"
 )
 
 // CreateBoookInput は書籍登録に必要な入力データです
@@ -35,17 +35,17 @@ type BookUseCase interface {
 
 // bookInteractor は BookUseCase の実装です
 type bookInteractor struct {
-	repo  domain.BookRepository
-	idGen domain.IDGenerator
+	repo  bookdomain.BookRepository
+	idGen bookdomain.IDGenerator
 }
 
-func NewBookUseCase(repo domain.BookRepository, idGen domain.IDGenerator) BookUseCase {
+func NewBookUseCase(repo bookdomain.BookRepository, idGen bookdomain.IDGenerator) BookUseCase {
 	return &bookInteractor{repo: repo, idGen: idGen}
 }
 
 func (i *bookInteractor) CreateBook(ctx context.Context, input CreateBookInput) (*CreateBookOutput, error) {
 	// ドメインモデルの生成
-	book, err := domain.NewBook(i.idGen.Generate(), input.Title, input.Price, input.ISBN)
+	book, err := bookdomain.NewBook(i.idGen.Generate(), input.Title, input.Price, input.ISBN)
 	if err != nil {
 		return nil, err
 	}
@@ -81,13 +81,13 @@ func (i *bookInteractor) GetAllBooks(ctx context.Context) ([]*BookOutput, error)
 }
 
 func (i *bookInteractor) GetBookByID(ctx context.Context, id string) (*BookOutput, error) {
-	book, err := i.repo.FindByID(ctx, domain.BookID(id))
+	book, err := i.repo.FindByID(ctx, bookdomain.BookID(id))
 	if err != nil {
 		return nil, err
 	}
 
 	if book == nil {
-		return nil, domain.ErrBookNotFound
+		return nil, bookdomain.ErrBookNotFound
 	}
 
 	return &BookOutput{
