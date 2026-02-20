@@ -1,14 +1,7 @@
 package book
 
-import "errors"
-
 // カスタム型定義
 type BookID string
-
-var (
-	ErrInvalidBookTitle = errors.New("invalid book title: cannot be empty")
-	ErrInvalidBookPrice = errors.New("invalid book price: cannot be negative")
-)
 
 type Book struct {
 	ID    BookID
