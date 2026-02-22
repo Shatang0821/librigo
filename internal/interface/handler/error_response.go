@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"librigo/internal/domain/apperror"
+	"log"
 	"net/http"
 )
 
@@ -46,12 +47,20 @@ func RespondWithError(w http.ResponseWriter, err error) {
 		message = "予期せぬエラーが発生しました"
 	}
 
+	if status >= 500 {
+		log.Printf("[ERROR] %d %s: %+v", status, code, err)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(errorResponse{
+	if encErr := json.NewEncoder(w).Encode(errorResponse{
 		Error: errorDetail{
 			Code:    code,
 			Message: message,
 		},
-	})
+	}); encErr != nil {
+		// すでに Header や Status は書き込んでしまっているため、
+		// ここではログを出力する以上のことはできませんが、異常を検知するために必須です
+		log.Printf("[CRITICAL] Failed to encode error response: %v", encErr)
+	}
 }
