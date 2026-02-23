@@ -8,11 +8,11 @@ import (
 	"net/http"
 )
 
-type errorResponse struct {
-	Error errorDetail `json:"error"`
+type ErrorResponse struct {
+	Error ErrorDetail `json:"error"`
 }
 
-type errorDetail struct {
+type ErrorDetail struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
@@ -53,8 +53,8 @@ func RespondWithError(w http.ResponseWriter, err error) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if encErr := json.NewEncoder(w).Encode(errorResponse{
-		Error: errorDetail{
+	if encErr := json.NewEncoder(w).Encode(ErrorResponse{
+		Error: ErrorDetail{
 			Code:    code,
 			Message: message,
 		},

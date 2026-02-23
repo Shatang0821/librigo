@@ -18,6 +18,9 @@ func NewBook(id BookID, title string, price int, isbn string) (*Book, error) {
 	if price < 0 {
 		return nil, ErrInvalidBookPrice
 	}
+	if isbn == "" {
+		return nil, ErrInvalidBookISBN
+	}
 	return &Book{
 		ID:    id,
 		Title: title,
