@@ -1,4 +1,4 @@
-package repository
+package postgres
 
 import (
 	"context"
@@ -9,15 +9,15 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-type PostgresRepository struct {
+type BookRepository struct {
 	db *sql.DB
 }
 
-func NewPostgresRepository(db *sql.DB) bookdomain.BookRepository {
-	return &PostgresRepository{db: db}
+func NewBookRepository(db *sql.DB) bookdomain.BookRepository {
+	return &BookRepository{db: db}
 }
 
-func (r *PostgresRepository) Save(ctx context.Context, book *bookdomain.Book) error {
+func (r *BookRepository) Save(ctx context.Context, book *bookdomain.Book) error {
 	query := `INSERT INTO books (id, title, price, isbn) VALUES ($1, $2, $3, $4)`
 	_, err := r.db.ExecContext(ctx, query, book.ID, book.Title, book.Price, book.ISBN)
 	if err != nil {
@@ -35,7 +35,7 @@ func (r *PostgresRepository) Save(ctx context.Context, book *bookdomain.Book) er
 	return nil
 }
 
-func (r *PostgresRepository) FindByID(ctx context.Context, id bookdomain.BookID) (*bookdomain.Book, error) {
+func (r *BookRepository) FindByID(ctx context.Context, id bookdomain.BookID) (*bookdomain.Book, error) {
 	query := `SELECT id, title, price, isbn FROM books WHERE id = $1`
 
 	var book bookdomain.Book
@@ -50,7 +50,7 @@ func (r *PostgresRepository) FindByID(ctx context.Context, id bookdomain.BookID)
 	return &book, nil
 }
 
-func (r *PostgresRepository) FindAll(ctx context.Context) ([]*bookdomain.Book, error) {
+func (r *BookRepository) FindAll(ctx context.Context) ([]*bookdomain.Book, error) {
 	query := `SELECT id, title, price, isbn FROM books`
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {

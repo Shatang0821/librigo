@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"librigo/internal/handler"
 	"librigo/internal/infrastructure/database"
-	"librigo/internal/infrastructure/repository"
-	"librigo/internal/interface/handler"
+	"librigo/internal/infrastructure/id"
+	"librigo/internal/infrastructure/postgres"
+
 	"librigo/internal/usecase"
 	"log"
 	"net/http"
@@ -18,13 +20,14 @@ func main() {
 	}
 	defer db.Close()
 	// インフラ層の初期化
-	idGen := repository.NewUUIDGenerator()
-	repo := repository.NewPostgresRepository(db)
+	idGen := id.NewBookUUIDGenerator()
+	// リポジトリ層の初期化
+	repo := postgres.NewBookRepository(db)
 
 	// ユースケース層の初期化
 	bookUseCase := usecase.NewBookUseCase(repo, idGen)
 
-	// インターフェース層の初期化
+	// ハンドラ層の初期化
 	bookHandler := handler.NewBookHandler(bookUseCase)
 
 	// ルーティング設定
