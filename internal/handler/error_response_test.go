@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"librigo/internal/domain/apperror"
-	"librigo/internal/interface/handler"
+	"librigo/internal/handler"
 	"net/http"
 	"net/http/httptest"
 	"testing"
