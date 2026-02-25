@@ -86,10 +86,6 @@ func (i *bookInteractor) GetBookByID(ctx context.Context, id string) (*BookOutpu
 		return nil, err
 	}
 
-	if book == nil {
-		return nil, bookdomain.ErrBookNotFound
-	}
-
 	return &BookOutput{
 		ID:    string(book.ID),
 		Title: book.Title,
