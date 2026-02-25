@@ -29,6 +29,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d librigo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   migrate:
     image: migrate/migrate
@@ -41,7 +46,8 @@ services:
         "up"
       ]
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:
