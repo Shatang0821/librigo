@@ -39,6 +39,8 @@ func RespondWithError(w http.ResponseWriter, err error) {
 			status = http.StatusBadRequest
 		default:
 			status = http.StatusInternalServerError
+			message = "予期せぬエラーが発生しました"
+			log.Printf("[ERROR] %d %s: %+v", status, code, err)
 		}
 	} else {
 		// AppError 以外（予期せぬエラー）の場合

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"librigo/internal/domain/apperror"
 	"librigo/internal/usecase"
 	"net/http"
@@ -41,8 +40,7 @@ type BookResponse struct {
 func (h *BookHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateBookRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		// TODO 一時的に
-		RespondWithError(w, apperror.New(err, "INVALID_REQUEST_BODY", apperror.TypeInvalid))
+		RespondWithError(w, apperror.ErrInvalidJSON)
 		return
 	}
 
@@ -89,8 +87,7 @@ func (h *BookHandler) List(w http.ResponseWriter, r *http.Request) {
 func (h *BookHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
-		// TODO 一時的に
-		RespondWithError(w, apperror.New(errors.New("ID is required"), "MISSING_ID", apperror.TypeInvalid))
+		RespondWithError(w, apperror.ErrNilInput)
 		return
 	}
 

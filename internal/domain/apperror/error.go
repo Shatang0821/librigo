@@ -1,5 +1,7 @@
 package apperror
 
+import "errors"
+
 type ErrorType string
 
 const (
@@ -29,3 +31,8 @@ func (e *AppError) Error() string {
 func (e *AppError) Unwrap() error {
 	return e.Err
 }
+
+var (
+	ErrInvalidJSON = New(errors.New("invalid JSON"), "INVALID_JSON", TypeInvalid)
+	ErrNilInput    = New(errors.New("input is nil"), "NIL_INPUT", TypeInvalid)
+)
