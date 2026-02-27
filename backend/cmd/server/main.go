@@ -15,6 +15,24 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// CORSミドルウェアの定義
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// フロントエンドのURLを許可
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// プリフライトリクエスト（OPTIONS）への対応
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	// データベース接続の初期化
 	db, err := database.NewPostgresDB()
@@ -38,7 +56,7 @@ func main() {
 
 	// ルーティング設定
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir("web"))) // 静的ファイルの提供
+
 	// 書籍登録
 	mux.HandleFunc("POST /books", bookHandler.Create)
 	// 書籍一覧取得
@@ -55,7 +73,7 @@ func main() {
 	})
 
 	fmt.Println("Librigo server starting on :8080...")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	if err := http.ListenAndServe(":8080", corsMiddleware(mux)); err != nil {
 		panic(err)
 	}
 }
