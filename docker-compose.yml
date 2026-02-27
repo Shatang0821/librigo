@@ -1,5 +1,16 @@
 services:
-  app:
+  frontend:
+    build: ./frontend
+    container_name: librigo-frontend
+    volumes:
+      - ./frontend:/app           # ホストのコードをコンテナ内に同期
+      - /app/node_modules        # コンテナ内の node_modules を保護（重要！）
+    ports:
+      - "5173:5173"
+    environment:
+      - CHOKIDAR_USEPOLLING=true # WSL2で変更検知が動かない場合の保険
+    tty: true                    # ログを綺麗に出すため
+  backend:
     build: .
     volumes:
       - .:/app
