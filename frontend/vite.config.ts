@@ -1,14 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite' // 追加
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    tailwindcss(), // 追加
+  ],
   server: {
     watch: {
-      usePolling: true, // ファイル変更を定期的にチェックする設定
+      usePolling: true,
     },
-    host: true, // Docker コンテナ外からのアクセスを許可
+    host: true,
     strictPort: true,
     port: 5173,
   },
