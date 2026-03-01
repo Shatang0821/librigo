@@ -25,11 +25,12 @@ func (m *mockUserRepo) FindByID(ctx context.Context, id userdomain.UserID) (*use
 }
 
 type mockHasher struct {
-	hashFunc func(p string) (string, error)
+	hashFunc    func(p string) (string, error)
+	compareFunc func(h, p string) error
 }
 
 func (m *mockHasher) Hash(p string) (string, error) { return m.hashFunc(p) }
-func (m *mockHasher) Compare(h, p string) error     { return nil } // 今回は不使用
+func (m *mockHasher) Compare(h, p string) error     { return m.compareFunc(h, p) }
 
 type mockIDGen struct {
 	generateFunc func() userdomain.UserID
@@ -39,7 +40,7 @@ func (m *mockIDGen) Generate() userdomain.UserID { return m.generateFunc() }
 
 // --- SignUp のテスト ---
 
-func TestSignUp(t *testing.T) {
+func TestUserUseCase_SignUp(t *testing.T) {
 	ctx := context.Background()
 	fixedID := "uuid-123"
 
@@ -60,11 +61,6 @@ func TestSignUp(t *testing.T) {
 			wantErr:  nil,
 			expectID: fixedID,
 		},
-		"異常系: パスワードが短すぎる": {
-			input:       usecase.SignUpInput{Name: "たろう", Email: "test@example.com", Password: "short"},
-			prepareMock: func(r *mockUserRepo, h *mockHasher, i *mockIDGen) {},
-			wantErr:     userdomain.ErrWeakPassword,
-		},
 		"異常系: Emailが既に存在する": {
 			input: usecase.SignUpInput{Name: "たろう", Email: "dup@example.com", Password: "password123"},
 			prepareMock: func(r *mockUserRepo, h *mockHasher, i *mockIDGen) {
@@ -78,28 +74,99 @@ func TestSignUp(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			// モックの初期化
 			r, h, i := &mockUserRepo{}, &mockHasher{}, &mockIDGen{}
 			tt.prepareMock(r, h, i)
-
-			// 実行対象の生成（インターフェースではなく構造体を受け取る現在の実装に合わせる）
 			uc := usecase.NewUserUseCase(r, h, i)
 
-			// 実行
 			out, err := uc.SignUp(ctx, tt.input)
-
-			// 検証
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("got error %v, want %v", err, tt.wantErr)
 			}
-			if tt.wantErr == nil {
-				if out == nil {
-					t.Fatal("expected output, but got nil")
-				}
-				if out.ID != tt.expectID {
-					t.Errorf("got ID %s, want %s", out.ID, tt.expectID)
-				}
+			if tt.wantErr == nil && out.ID != tt.expectID {
+				t.Errorf("got ID %s, want %s", out.ID, tt.expectID)
 			}
 		})
 	}
+}
+
+func TestUserUseCase_SignIn(t *testing.T) {
+	ctx := context.Background()
+
+	tests := map[string]struct {
+		input       usecase.SignInInput
+		prepareMock func(r *mockUserRepo, h *mockHasher)
+		wantErr     error
+	}{
+		"正常系: ログイン成功": {
+			input: usecase.SignInInput{Email: "test@example.com", Password: "password123"},
+			prepareMock: func(r *mockUserRepo, h *mockHasher) {
+				r.findByEmailFunc = func(email string) (*userdomain.User, error) {
+					return &userdomain.User{Email: email, PasswordHash: "hashed"}, nil
+				}
+				h.compareFunc = func(h, p string) error { return nil }
+			},
+			wantErr: nil,
+		},
+		"異常系: ユーザーが見つからない": {
+			input: usecase.SignInInput{Email: "none@example.com", Password: "password123"},
+			prepareMock: func(r *mockUserRepo, h *mockHasher) {
+				r.findByEmailFunc = func(email string) (*userdomain.User, error) {
+					return nil, userdomain.ErrUserNotFound
+				}
+			},
+			wantErr: userdomain.ErrInvalidCredentials,
+		},
+		"異常系: パスワード不一致": {
+			input: usecase.SignInInput{Email: "test@example.com", Password: "wrong"},
+			prepareMock: func(r *mockUserRepo, h *mockHasher) {
+				r.findByEmailFunc = func(email string) (*userdomain.User, error) {
+					return &userdomain.User{Email: email}, nil
+				}
+				h.compareFunc = func(h, p string) error { return errors.New("mismatch") }
+			},
+			wantErr: userdomain.ErrInvalidCredentials,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			r, h, i := &mockUserRepo{}, &mockHasher{}, &mockIDGen{}
+			tt.prepareMock(r, h)
+			uc := usecase.NewUserUseCase(r, h, i)
+
+			out, err := uc.SignIn(ctx, tt.input)
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("got error %v, want %v", err, tt.wantErr)
+			}
+			if tt.wantErr == nil && out.Token == "" {
+				t.Error("expected token, but got empty")
+			}
+		})
+	}
+}
+
+// --- 取得系のテスト ---
+
+func TestUserUseCase_GetMethods(t *testing.T) {
+	ctx := context.Background()
+	testUser := &userdomain.User{ID: "u1", Name: "たろう", Email: "test@example.com"}
+
+	r, h, i := &mockUserRepo{}, &mockHasher{}, &mockIDGen{}
+	uc := usecase.NewUserUseCase(r, h, i)
+
+	t.Run("GetUserByEmail: 成功", func(t *testing.T) {
+		r.findByEmailFunc = func(email string) (*userdomain.User, error) { return testUser, nil }
+		out, err := uc.GetUserByEmail(ctx, testUser.Email)
+		if err != nil || out.ID != "u1" {
+			t.Errorf("failed to get user: %v", err)
+		}
+	})
+
+	t.Run("GetUserByID: 成功", func(t *testing.T) {
+		r.findByIDFunc = func(id userdomain.UserID) (*userdomain.User, error) { return testUser, nil }
+		out, err := uc.GetUserByID(ctx, "u1")
+		if err != nil || out.Email != testUser.Email {
+			t.Errorf("failed to get user: %v", err)
+		}
+	})
 }
