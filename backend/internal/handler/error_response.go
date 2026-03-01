@@ -39,6 +39,8 @@ func RespondWithError(w http.ResponseWriter, err error) {
 			status = http.StatusBadRequest
 		case apperror.TypeUnauthorized:
 			status = http.StatusUnauthorized
+		case apperror.TypeUnauthenticated:
+			status = http.StatusUnauthorized
 		default:
 			status = http.StatusInternalServerError
 			message = "予期せぬエラーが発生しました"

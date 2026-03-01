@@ -5,10 +5,11 @@ import "errors"
 type ErrorType string
 
 const (
-	TypeNotFound     ErrorType = "NOT_FOUND"
-	TypeConflict     ErrorType = "CONFLICT"
-	TypeInvalid      ErrorType = "INVALID"
-	TypeUnauthorized ErrorType = "UNAUTHORIZED"
+	TypeNotFound        ErrorType = "NOT_FOUND"
+	TypeConflict        ErrorType = "CONFLICT"
+	TypeInvalid         ErrorType = "INVALID"
+	TypeUnauthorized    ErrorType = "UNAUTHORIZED"
+	TypeUnauthenticated ErrorType = "UNAUTHENTICATED"
 )
 
 type AppError struct {
