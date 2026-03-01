@@ -7,6 +7,7 @@ import (
 	"librigo/internal/infrastructure/database"
 	"librigo/internal/infrastructure/id"
 	"librigo/internal/infrastructure/postgres"
+	"librigo/internal/middleware"
 	"os"
 
 	"librigo/internal/usecase"
@@ -59,12 +60,13 @@ func main() {
 	// ハンドラ層の初期化
 	bookHandler := handler.NewBookHandler(bookUseCase)
 	userHandler := handler.NewUserHandler(userUseCase)
-
+	// ミドルウェアの初期化
+	auth := middleware.AuthMiddleware(tokenGen)
 	// ルーティング設定
 	mux := http.NewServeMux()
 
 	// 書籍登録
-	mux.HandleFunc("POST /books", bookHandler.Create)
+	mux.Handle("POST /books", auth(http.HandlerFunc(bookHandler.Create)))
 	// 書籍一覧取得
 	mux.HandleFunc("GET /books", bookHandler.List)
 	// 書籍詳細取得
