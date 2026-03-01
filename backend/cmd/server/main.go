@@ -7,6 +7,7 @@ import (
 	"librigo/internal/infrastructure/database"
 	"librigo/internal/infrastructure/id"
 	"librigo/internal/infrastructure/postgres"
+	"os"
 
 	"librigo/internal/usecase"
 	"log"
@@ -44,12 +45,17 @@ func main() {
 	bookIdGen := id.NewBookUUIDGenerator()
 	userIdGen := id.NewUserUUIDGenerator()
 	hasher := auth.NewBcryptHasher(bcrypt.DefaultCost)
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "your-very-secret-key" // 開発用デフォルト
+	}
+	tokenGen := auth.NewJWTGenerator(jwtSecret)
 	// リポジトリ層の初期化
 	bookRepo := postgres.NewBookRepository(db)
 	userRepo := postgres.NewUserRepository(db)
 	// ユースケース層の初期化
 	bookUseCase := usecase.NewBookUseCase(bookRepo, bookIdGen)
-	userUseCase := usecase.NewUserUseCase(userRepo, hasher, userIdGen)
+	userUseCase := usecase.NewUserUseCase(userRepo, hasher, userIdGen, tokenGen)
 	// ハンドラ層の初期化
 	bookHandler := handler.NewBookHandler(bookUseCase)
 	userHandler := handler.NewUserHandler(userUseCase)
@@ -66,7 +72,7 @@ func main() {
 
 	// ユーザー登録
 	mux.HandleFunc("POST /signup", userHandler.SignUp)
-
+	mux.HandleFunc("POST /signin", userHandler.SignIn)
 	// ヘルスチェック
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("OK"))
