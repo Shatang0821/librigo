@@ -6,6 +6,7 @@ import (
 	userdomain "librigo/internal/domain/user"
 	"librigo/internal/usecase"
 	"testing"
+	"time"
 )
 
 // --- 手動モックの定義 ---
@@ -38,6 +39,14 @@ type mockIDGen struct {
 
 func (m *mockIDGen) Generate() userdomain.UserID { return m.generateFunc() }
 
+type mockTokenGen struct {
+	generateFunc func(u *userdomain.User) (string, error)
+}
+
+func (m *mockTokenGen) Generate(u *userdomain.User, d time.Duration) (string, error) {
+	return m.generateFunc(u)
+}
+
 // --- SignUp のテスト ---
 
 func TestUserUseCase_SignUp(t *testing.T) {
@@ -46,13 +55,13 @@ func TestUserUseCase_SignUp(t *testing.T) {
 
 	tests := map[string]struct {
 		input       usecase.SignUpInput
-		prepareMock func(r *mockUserRepo, h *mockHasher, i *mockIDGen)
+		prepareMock func(r *mockUserRepo, h *mockHasher, i *mockIDGen, tg *mockTokenGen)
 		wantErr     error
 		expectID    string
 	}{
 		"正常系: ユーザー登録成功": {
 			input: usecase.SignUpInput{Name: "たろう", Email: "test@example.com", Password: "password123"},
-			prepareMock: func(r *mockUserRepo, h *mockHasher, i *mockIDGen) {
+			prepareMock: func(r *mockUserRepo, h *mockHasher, i *mockIDGen, tg *mockTokenGen) {
 				r.findByEmailFunc = func(email string) (*userdomain.User, error) { return nil, nil }
 				r.saveFunc = func(u *userdomain.User) error { return nil }
 				h.hashFunc = func(p string) (string, error) { return "hashed_pass", nil }
@@ -63,7 +72,7 @@ func TestUserUseCase_SignUp(t *testing.T) {
 		},
 		"異常系: Emailが既に存在する": {
 			input: usecase.SignUpInput{Name: "たろう", Email: "dup@example.com", Password: "password123"},
-			prepareMock: func(r *mockUserRepo, h *mockHasher, i *mockIDGen) {
+			prepareMock: func(r *mockUserRepo, h *mockHasher, i *mockIDGen, tg *mockTokenGen) {
 				r.findByEmailFunc = func(email string) (*userdomain.User, error) {
 					return &userdomain.User{Email: email}, nil
 				}
@@ -74,9 +83,9 @@ func TestUserUseCase_SignUp(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			r, h, i := &mockUserRepo{}, &mockHasher{}, &mockIDGen{}
-			tt.prepareMock(r, h, i)
-			uc := usecase.NewUserUseCase(r, h, i)
+			r, h, i, tg := &mockUserRepo{}, &mockHasher{}, &mockIDGen{}, &mockTokenGen{}
+			tt.prepareMock(r, h, i, tg)
+			uc := usecase.NewUserUseCase(r, h, i, tg) // TokenGeneratorを追加
 
 			out, err := uc.SignUp(ctx, tt.input)
 			if !errors.Is(err, tt.wantErr) {
@@ -91,25 +100,27 @@ func TestUserUseCase_SignUp(t *testing.T) {
 
 func TestUserUseCase_SignIn(t *testing.T) {
 	ctx := context.Background()
+	dummyToken := "signed-jwt-token"
 
 	tests := map[string]struct {
 		input       usecase.SignInInput
-		prepareMock func(r *mockUserRepo, h *mockHasher)
+		prepareMock func(r *mockUserRepo, h *mockHasher, tg *mockTokenGen)
 		wantErr     error
 	}{
 		"正常系: ログイン成功": {
 			input: usecase.SignInInput{Email: "test@example.com", Password: "password123"},
-			prepareMock: func(r *mockUserRepo, h *mockHasher) {
+			prepareMock: func(r *mockUserRepo, h *mockHasher, tg *mockTokenGen) {
 				r.findByEmailFunc = func(email string) (*userdomain.User, error) {
 					return &userdomain.User{Email: email, PasswordHash: "hashed"}, nil
 				}
 				h.compareFunc = func(h, p string) error { return nil }
+				tg.generateFunc = func(u *userdomain.User) (string, error) { return dummyToken, nil }
 			},
 			wantErr: nil,
 		},
 		"異常系: ユーザーが見つからない": {
 			input: usecase.SignInInput{Email: "none@example.com", Password: "password123"},
-			prepareMock: func(r *mockUserRepo, h *mockHasher) {
+			prepareMock: func(r *mockUserRepo, h *mockHasher, tg *mockTokenGen) {
 				r.findByEmailFunc = func(email string) (*userdomain.User, error) {
 					return nil, userdomain.ErrUserNotFound
 				}
@@ -118,7 +129,7 @@ func TestUserUseCase_SignIn(t *testing.T) {
 		},
 		"異常系: パスワード不一致": {
 			input: usecase.SignInInput{Email: "test@example.com", Password: "wrong"},
-			prepareMock: func(r *mockUserRepo, h *mockHasher) {
+			prepareMock: func(r *mockUserRepo, h *mockHasher, tg *mockTokenGen) {
 				r.findByEmailFunc = func(email string) (*userdomain.User, error) {
 					return &userdomain.User{Email: email}, nil
 				}
@@ -130,16 +141,18 @@ func TestUserUseCase_SignIn(t *testing.T) {
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			r, h, i := &mockUserRepo{}, &mockHasher{}, &mockIDGen{}
-			tt.prepareMock(r, h)
-			uc := usecase.NewUserUseCase(r, h, i)
+			r, h, i, tg := &mockUserRepo{}, &mockHasher{}, &mockIDGen{}, &mockTokenGen{}
+			tt.prepareMock(r, h, tg)
+			uc := usecase.NewUserUseCase(r, h, i, tg)
 
 			out, err := uc.SignIn(ctx, tt.input)
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("got error %v, want %v", err, tt.wantErr)
 			}
-			if tt.wantErr == nil && out.Token == "" {
-				t.Error("expected token, but got empty")
+			if tt.wantErr == nil {
+				if out.Token != dummyToken {
+					t.Errorf("got token %s, want %s", out.Token, dummyToken)
+				}
 			}
 		})
 	}
@@ -151,8 +164,8 @@ func TestUserUseCase_GetMethods(t *testing.T) {
 	ctx := context.Background()
 	testUser := &userdomain.User{ID: "u1", Name: "たろう", Email: "test@example.com"}
 
-	r, h, i := &mockUserRepo{}, &mockHasher{}, &mockIDGen{}
-	uc := usecase.NewUserUseCase(r, h, i)
+	r, h, i, tg := &mockUserRepo{}, &mockHasher{}, &mockIDGen{}, &mockTokenGen{}
+	uc := usecase.NewUserUseCase(r, h, i, tg)
 
 	t.Run("GetUserByEmail: 成功", func(t *testing.T) {
 		r.findByEmailFunc = func(email string) (*userdomain.User, error) { return testUser, nil }

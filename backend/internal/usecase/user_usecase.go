@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	userdomain "librigo/internal/domain/user"
+	"time"
 )
 
 // CreateUserInputはユーザー作成のための入力データを表す構造体です。
@@ -49,13 +50,15 @@ type userInteractor struct {
 	repo           userdomain.UserRepository
 	passwordHasher userdomain.PassWordHasher
 	idGen          userdomain.IDGenerator
+	tokenGen       userdomain.TokenGenerator
 }
 
-func NewUserUseCase(repo userdomain.UserRepository, passwordHasher userdomain.PassWordHasher, idGen userdomain.IDGenerator) UserUseCase {
+func NewUserUseCase(repo userdomain.UserRepository, passwordHasher userdomain.PassWordHasher, idGen userdomain.IDGenerator, tokenGen userdomain.TokenGenerator) UserUseCase {
 	return &userInteractor{
 		repo:           repo,
 		passwordHasher: passwordHasher,
 		idGen:          idGen,
+		tokenGen:       tokenGen,
 	}
 }
 
@@ -117,11 +120,14 @@ func (i *userInteractor) SignIn(ctx context.Context, in SignInInput) (*SignInOut
 		return nil, userdomain.ErrInvalidCredentials
 	}
 
-	// トークンの生成(仮に文字列を返す)
-	dummyToken := "dummy-jwt-token"
+	// JWTトークンを生成 有効期限は1時間
+	token, err := i.tokenGen.Generate(user, 1*time.Hour)
+	if err != nil {
+		return nil, err
+	}
 
 	return &SignInOutput{
-		Token: dummyToken,
+		Token: token,
 		User: &UserOutput{
 			ID:    string(user.ID),
 			Name:  user.Name,
