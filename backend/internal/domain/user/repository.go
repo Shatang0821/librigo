@@ -1,6 +1,9 @@
 package user
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type UserRepository interface {
 	Save(ctx context.Context, user *User) error
@@ -15,4 +18,8 @@ type PassWordHasher interface {
 
 type IDGenerator interface {
 	Generate() UserID
+}
+
+type TokenGenerator interface {
+	Generate(u *User, duration time.Duration) (string, error)
 }
