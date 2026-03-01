@@ -41,10 +41,15 @@ func (m *mockIDGen) Generate() userdomain.UserID { return m.generateFunc() }
 
 type mockTokenGen struct {
 	generateFunc func(u *userdomain.User) (string, error)
+	parseFunc    func(tokenString string) (*userdomain.UserClaims, error)
 }
 
 func (m *mockTokenGen) Generate(u *userdomain.User, d time.Duration) (string, error) {
 	return m.generateFunc(u)
+}
+
+func (m *mockTokenGen) Parse(tokenString string) (*userdomain.UserClaims, error) {
+	return m.parseFunc(tokenString)
 }
 
 // --- SignUp のテスト ---
