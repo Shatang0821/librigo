@@ -20,6 +20,15 @@ type IDGenerator interface {
 	Generate() UserID
 }
 
+// トークンに埋め込む情報を保持する構造体
+type UserClaims struct {
+	UserID UserID
+	Role   UserRole
+}
+
 type TokenGenerator interface {
+	// User情報をもとにJWTトークンを生成するメソッド
 	Generate(u *User, duration time.Duration) (string, error)
+	// トークンを解析してUserClaimsを取得するメソッド
+	Parse(tokenString string) (*UserClaims, error)
 }
