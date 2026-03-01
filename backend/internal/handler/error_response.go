@@ -37,6 +37,8 @@ func RespondWithError(w http.ResponseWriter, err error) {
 			status = http.StatusConflict
 		case apperror.TypeInvalid:
 			status = http.StatusBadRequest
+		case apperror.TypeUnauthorized:
+			status = http.StatusUnauthorized
 		default:
 			status = http.StatusInternalServerError
 			message = "予期せぬエラーが発生しました"

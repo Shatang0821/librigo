@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	userdomain "librigo/internal/domain/user"
 )
 
@@ -19,6 +20,16 @@ type SignUpOutput struct {
 	Email string
 }
 
+type SignInInput struct {
+	Email    string
+	Password string
+}
+
+type SignInOutput struct {
+	Token string // 後にJWTトークンを入れます
+	User  *UserOutput
+}
+
 type UserOutput struct {
 	ID    string
 	Name  string
@@ -28,6 +39,7 @@ type UserOutput struct {
 
 type UserUseCase interface {
 	SignUp(ctx context.Context, input SignUpInput) (*SignUpOutput, error)
+	SignIn(ctx context.Context, input SignInInput) (*SignInOutput, error)
 	GetUserByEmail(ctx context.Context, email string) (*UserOutput, error)
 	GetUserByID(ctx context.Context, id string) (*UserOutput, error)
 }
@@ -47,6 +59,7 @@ func NewUserUseCase(repo userdomain.UserRepository, passwordHasher userdomain.Pa
 	}
 }
 
+// ユーザの新規登録
 func (i *userInteractor) SignUp(ctx context.Context, in SignUpInput) (*SignUpOutput, error) {
 	// パスワードの強度をチェック
 	if err := userdomain.ValidatePassword(in.Password); err != nil {
@@ -88,6 +101,37 @@ func (i *userInteractor) SignUp(ctx context.Context, in SignUpInput) (*SignUpOut
 	}, nil
 }
 
+// ユーザのサインイン
+func (i *userInteractor) SignIn(ctx context.Context, in SignInInput) (*SignInOutput, error) {
+	// メールアドレスでユーザを取得
+	user, err := i.repo.FindByEmail(ctx, in.Email)
+	if err != nil {
+		if errors.Is(err, userdomain.ErrUserNotFound) {
+			return nil, userdomain.ErrInvalidCredentials
+		}
+		return nil, err
+	}
+
+	// パスワードを検証
+	if err := i.passwordHasher.Compare(user.PasswordHash, in.Password); err != nil {
+		return nil, userdomain.ErrInvalidCredentials
+	}
+
+	// トークンの生成(仮に文字列を返す)
+	dummyToken := "dummy-jwt-token"
+
+	return &SignInOutput{
+		Token: dummyToken,
+		User: &UserOutput{
+			ID:    string(user.ID),
+			Name:  user.Name,
+			Email: user.Email,
+			Role:  user.Role,
+		},
+	}, nil
+}
+
+// メールアドレスでユーザを取得
 func (i *userInteractor) GetUserByEmail(ctx context.Context, email string) (*UserOutput, error) {
 	user, err := i.repo.FindByEmail(ctx, email)
 
@@ -103,6 +147,7 @@ func (i *userInteractor) GetUserByEmail(ctx context.Context, email string) (*Use
 	}, nil
 }
 
+// IDでユーザを取得
 func (i *userInteractor) GetUserByID(ctx context.Context, id string) (*UserOutput, error) {
 	user, err := i.repo.FindByID(ctx, userdomain.UserID(id))
 
