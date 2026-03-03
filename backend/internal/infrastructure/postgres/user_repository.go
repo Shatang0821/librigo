@@ -42,7 +42,7 @@ func (r *UserRepository) Save(ctx context.Context, user *userdomain.User) error 
 }
 
 // FindByEmailはメールアドレスでユーザーを検索するメソッドです。ユーザーが見つからない場合はuser.ErrUserNotFoundを返します。
-func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*userdomain.User, error) {
+func (r *UserRepository) FindByEmail(ctx context.Context, email user.Email) (*userdomain.User, error) {
 	query := `SELECT id, name, email, password_hash, role FROM users WHERE email = $1`
 	row := r.db.QueryRowContext(ctx, query, email)
 

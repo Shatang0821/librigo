@@ -84,6 +84,24 @@ func TestUserUseCase_SignUp(t *testing.T) {
 			},
 			wantErr: userdomain.ErrDuplicateUser,
 		},
+		"異常系: Emailの形式が不正": {
+			input: usecase.SignUpInput{Name: "たろう", Email: "invalid-email", Password: "password123"},
+			prepareMock: func(r *mockUserRepo, h *mockHasher, i *mockIDGen, tg *mockTokenGen) {
+				r.findByEmailFunc = func(email string) (*userdomain.User, error) {
+					return nil, nil
+				}
+				h.hashFunc = func(p string) (string, error) { return "hashed_pass", nil }
+				i.generateFunc = func() userdomain.UserID { return userdomain.UserID(fixedID) }
+			},
+			wantErr: userdomain.ErrInvalidUserEmail,
+		},
+		"異常系: パスワードが衰弱である": {
+			input: usecase.SignUpInput{Name: "たろう", Email: "test@example.com", Password: "weak"},
+			prepareMock: func(r *mockUserRepo, h *mockHasher, i *mockIDGen, tg *mockTokenGen) {
+
+			},
+			wantErr: userdomain.ErrWeakPassword,
+		},
 	}
 
 	for name, tt := range tests {

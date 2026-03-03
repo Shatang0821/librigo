@@ -1,12 +1,19 @@
 package user
 
-import "net/mail"
+import (
+	"net/mail"
+	"strings"
+)
 
-// UserID はユーザーの一意識別子です
-type UserID string
+func NewEmail(v string) (Email, error) {
+	trimmed := strings.TrimSpace(v)
 
-// UserRole はユーザーの権限を定義します
-type UserRole string
+	addr, err := mail.ParseAddress(trimmed)
+	if err != nil {
+		return "", ErrInvalidUserEmail
+	}
+	return Email(addr.Address), nil
+}
 
 const (
 	RoleAdmin  UserRole = "admin"
@@ -16,20 +23,14 @@ const (
 type User struct {
 	ID           UserID
 	Name         string
-	Email        string
+	Email        Email
 	PasswordHash string
 	Role         UserRole
 }
 
-func NewUser(id UserID, name, email, passwordHash string, role UserRole) (*User, error) {
-	if name == "" {
-		return nil, ErrInvalidUserName
-	}
-	if _, err := mail.ParseAddress(email); err != nil {
-		return nil, ErrInvalidUserEmail
-	}
+func NewUser(id UserID, name string, email Email, passwordHash string, role UserRole) (*User, error) {
 
-	// ロールのデフォルト値設定（未指定なら Member）
+	// ロールのデフォルト値設定
 	if role == "" {
 		role = RoleMember
 	}
@@ -46,7 +47,7 @@ func NewUser(id UserID, name, email, passwordHash string, role UserRole) (*User,
 // ValidatePassword はパスワードの強度を検証します
 func ValidatePassword(password string) error {
 	if len(password) < 8 {
-		return ErrWeakPassword
+		return ErrWeakUserPassword
 	}
 	return nil
 }

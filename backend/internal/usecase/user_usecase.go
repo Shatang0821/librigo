@@ -64,15 +64,20 @@ func NewUserUseCase(repo userdomain.UserRepository, passwordHasher userdomain.Pa
 
 // ユーザの新規登録
 func (i *userInteractor) SignUp(ctx context.Context, in SignUpInput) (*SignUpOutput, error) {
+	// emailのバリデーションと正規化
+	email, err := userdomain.NewEmail(in.Email)
+	if err != nil {
+		return nil, err
+	}
+	// emailの重複をチェック
+	existingUser, _ := i.repo.FindByEmail(ctx, email)
+	if existingUser != nil {
+		return nil, userdomain.ErrDuplicateUser
+	}
+
 	// パスワードの強度をチェック
 	if err := userdomain.ValidatePassword(in.Password); err != nil {
 		return nil, err
-	}
-
-	// emailの重複をチェック
-	existingUser, _ := i.repo.FindByEmail(ctx, in.Email)
-	if existingUser != nil {
-		return nil, userdomain.ErrDuplicateUser
 	}
 
 	// パスワードをハッシュ化
@@ -84,7 +89,7 @@ func (i *userInteractor) SignUp(ctx context.Context, in SignUpInput) (*SignUpOut
 	newUser, err := userdomain.NewUser(
 		i.idGen.Generate(),
 		in.Name,
-		in.Email,
+		email,
 		hashedPassword,
 		userdomain.RoleMember, // デフォルトでMemberロールを設定
 	)
@@ -100,14 +105,19 @@ func (i *userInteractor) SignUp(ctx context.Context, in SignUpInput) (*SignUpOut
 	return &SignUpOutput{
 		ID:    string(newUser.ID),
 		Name:  newUser.Name,
-		Email: newUser.Email,
+		Email: string(newUser.Email),
 	}, nil
 }
 
 // ユーザのサインイン
 func (i *userInteractor) SignIn(ctx context.Context, in SignInInput) (*SignInOutput, error) {
+	// emailのバリデーションと正規化
+	email, err := userdomain.NewEmail(in.Email)
+	if err != nil {
+		return nil, err
+	}
 	// メールアドレスでユーザを取得
-	user, err := i.repo.FindByEmail(ctx, in.Email)
+	user, err := i.repo.FindByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, userdomain.ErrUserNotFound) {
 			return nil, userdomain.ErrInvalidCredentials
@@ -131,14 +141,19 @@ func (i *userInteractor) SignIn(ctx context.Context, in SignInInput) (*SignInOut
 		User: &UserOutput{
 			ID:    string(user.ID),
 			Name:  user.Name,
-			Email: user.Email,
+			Email: string(user.Email),
 			Role:  user.Role,
 		},
 	}, nil
 }
 
 // メールアドレスでユーザを取得
-func (i *userInteractor) GetUserByEmail(ctx context.Context, email string) (*UserOutput, error) {
+func (i *userInteractor) GetUserByEmail(ctx context.Context, emails string) (*UserOutput, error) {
+	// emailのバリデーションと正規化
+	email, err := userdomain.NewEmail(emails)
+	if err != nil {
+		return nil, err
+	}
 	user, err := i.repo.FindByEmail(ctx, email)
 
 	if err != nil {
@@ -148,7 +163,7 @@ func (i *userInteractor) GetUserByEmail(ctx context.Context, email string) (*Use
 	return &UserOutput{
 		ID:    string(user.ID),
 		Name:  user.Name,
-		Email: user.Email,
+		Email: string(user.Email),
 		Role:  user.Role,
 	}, nil
 }
@@ -164,7 +179,7 @@ func (i *userInteractor) GetUserByID(ctx context.Context, id string) (*UserOutpu
 	return &UserOutput{
 		ID:    string(user.ID),
 		Name:  user.Name,
-		Email: user.Email,
+		Email: string(user.Email),
 		Role:  user.Role,
 	}, nil
 }

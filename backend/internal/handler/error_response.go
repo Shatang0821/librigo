@@ -26,11 +26,11 @@ func RespondWithError(w http.ResponseWriter, err error) {
 
 	// 発生したエラーが AppError 型かどうかをチェック
 	if errors.As(err, &appErr) {
-		code = appErr.Code
+		code = appErr.Def.Code
 		message = appErr.Error()
 
 		// ErrorType を HTTP ステータスコードにマッピング
-		switch appErr.ErrType {
+		switch appErr.Def.ErrType {
 		case apperror.TypeNotFound:
 			status = http.StatusNotFound
 		case apperror.TypeConflict:
