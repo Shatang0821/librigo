@@ -1,53 +1,39 @@
 package user
 
 import (
-	"net/mail"
-	"strings"
+	"errors"
+	"librigo/internal/domain/apperror"
 )
 
-func NewEmail(v string) (Email, error) {
-	trimmed := strings.TrimSpace(v)
-
-	addr, err := mail.ParseAddress(trimmed)
-	if err != nil {
-		return "", ErrInvalidUserEmail
-	}
-	return Email(addr.Address), nil
-}
-
-const (
-	RoleAdmin  UserRole = "admin"
-	RoleMember UserRole = "member"
+var (
+	ErrInvalidUser = apperror.New("INVALID_USER", apperror.TypeInvalid)
 )
 
 type User struct {
-	ID           UserID
-	Name         string
-	Email        Email
-	PasswordHash string
-	Role         UserRole
+	id           UserID
+	name         UserName
+	email        UserEmail
+	passwordHash UserHashedPassword
+	role         UserRole
 }
 
-func NewUser(id UserID, name string, email Email, passwordHash string, role UserRole) (*User, error) {
-
-	// ロールのデフォルト値設定
-	if role == "" {
-		role = RoleMember
+func NewUser(id UserID, name UserName, email UserEmail, passwordHash UserHashedPassword, role UserRole) (*User, error) {
+	if id.value == "" || name.value == "" || email.value == "" || passwordHash.value == "" || role.value == "" {
+		return nil, ErrInvalidUser.WithError(errors.New("User fields cannot be empty"))
 	}
 
 	return &User{
-		ID:           id,
-		Name:         name,
-		Email:        email,
-		PasswordHash: passwordHash,
-		Role:         role,
+		id:           id,
+		name:         name,
+		email:        email,
+		passwordHash: passwordHash,
+		role:         role,
 	}, nil
 }
 
-// ValidatePassword はパスワードの強度を検証します
-func ValidatePassword(password string) error {
-	if len(password) < 8 {
-		return ErrWeakUserPassword
-	}
-	return nil
-}
+// 外部から値を取得するための Getter メソッド群
+func (u *User) ID() UserID                       { return u.id }
+func (u *User) Name() UserName                   { return u.name }
+func (u *User) Email() UserEmail                 { return u.email }
+func (u *User) Role() UserRole                   { return u.role }
+func (u *User) PasswordHash() UserHashedPassword { return u.passwordHash }

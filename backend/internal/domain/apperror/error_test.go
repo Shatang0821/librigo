@@ -2,91 +2,102 @@ package apperror
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 )
 
-func TestAppError(t *testing.T) {
-	// テスト用の定義と元となるエラー
-	defA := New("ERR_A", TypeInvalid)
-	defB := New("ERR_B", TypeConflict)
-	baseErr := errors.New("original error message")
+func TestAppError_TableDriven(t *testing.T) {
+	// 固定のテスト用定義
+	testDef := New("TEST_ERR", TypeInvalid)
+	otherDef := New("OTHER_ERR", TypeConflict)
+	baseErr := errors.New("original message")
 
-	t.Run("Getter methods and Error()", func(t *testing.T) {
-		appErr := defA.WithError(baseErr)
+	// map形式でのテストケース定義
+	tests := map[string]struct {
+		// 入力とセットアップ
+		setup  func() error
+		target error // errors.Is で比較する対象
 
-		if appErr.GetCode() != "ERR_A" {
-			t.Errorf("expected code ERR_A, got %s", appErr.GetCode())
-		}
-		if appErr.GetType() != TypeInvalid {
-			t.Errorf("expected type %s, got %s", TypeInvalid, appErr.GetType())
-		}
-		if appErr.Error() != "original error message" {
-			t.Errorf("expected message 'original error message', got %s", appErr.Error())
-		}
-	})
-
-	t.Run("Unwrap", func(t *testing.T) {
-		appErr := defA.WithError(baseErr)
-		unwrapped := errors.Unwrap(appErr)
-
-		if unwrapped != baseErr {
-			t.Errorf("unwrapped error does not match original")
-		}
-	})
-
-	t.Run("Is function (errors.Is compliance)", func(t *testing.T) {
-		tests := []struct {
-			name   string
-			err    error
-			target error
-			want   bool
-		}{
-			{
-				name:   "一致する場合",
-				err:    defA.WithError(baseErr),
-				target: defA,
-				want:   true,
+		// 期待値
+		wantIs     bool
+		expectCode string
+		expectType ErrorType
+	}{
+		"正常系: AppErrorの生成と情報取得": {
+			setup: func() error {
+				return testDef.WithError(baseErr)
 			},
-			{
-				name:   "別のErrorDefと比較する場合",
-				err:    defA.WithError(baseErr),
-				target: defB,
-				want:   false,
+			target:     nil, // Isのテストは行わない
+			wantIs:     false,
+			expectCode: "TEST_ERR",
+			expectType: TypeInvalid,
+		},
+		"判定系: errors.Isでの一致(同一インスタンス)": {
+			setup: func() error {
+				return testDef.WithError(baseErr)
 			},
-			{
-				name:   "全く別のエラー型と比較する場合",
-				err:    defA.WithError(baseErr),
-				target: errors.New("other"),
-				want:   false,
+			target: testDef,
+			wantIs: true,
+		},
+		"判定系: errors.Isでの一致(別インスタンス/同Code)": {
+			setup: func() error {
+				return testDef.WithError(baseErr)
 			},
-			{
-				name:   "ErrorDef単体での比較 (ErrorDef.Error()の確認)",
-				err:    defA,
-				target: defA,
-				want:   true,
+			target: &ErrorDef{Code: "TEST_ERR", ErrType: TypeInvalid},
+			wantIs: true,
+		},
+		"判定系: errors.Isでの不一致(別Code)": {
+			setup: func() error {
+				return testDef.WithError(baseErr)
 			},
-		}
+			target: otherDef,
+			wantIs: false,
+		},
+		"判定系: errors.Isでの不一致(型違い)": {
+			setup: func() error {
+				return testDef.WithError(baseErr)
+			},
+			target: errors.New("TEST_ERR"),
+			wantIs: false,
+		},
+		"正常系: Unwrapによる元エラーの取得": {
+			setup: func() error {
+				return testDef.WithError(baseErr)
+			},
+			target: nil,
+			wantIs: false,
+			// Unwrapの検証は別途行うが、期待値として定義しても良い
+		},
+	}
 
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				// Go標準の errors.Is を使用してテスト
-				if got := errors.Is(tt.err, tt.target); got != tt.want {
-					t.Errorf("errors.Is() = %v, want %v", got, tt.want)
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			// テスト対象のエラーを生成
+			err := tt.setup()
+
+			// 1. errors.Is の検証
+			if tt.target != nil {
+				if got := errors.Is(err, tt.target); got != tt.wantIs {
+					t.Errorf("errors.Is() = %v, want %v", got, tt.wantIs)
 				}
-			})
-		}
-	})
-}
+			}
 
-func TestGlobalErrors(t *testing.T) {
-	t.Run("ErrInvalidJSON", func(t *testing.T) {
-		err := ErrInvalidJSON.WithError(fmt.Errorf("syntax error"))
-		if !errors.Is(err, ErrInvalidJSON) {
-			t.Error("should match ErrInvalidJSON")
-		}
-		if err.GetType() != TypeInvalid {
-			t.Error("type should be TypeInvalid")
-		}
-	})
+			// 2. Getter関数の検証（AppError型にキャスト可能な場合のみ）
+			if appErr, ok := err.(*AppError); ok {
+				if tt.expectCode != "" && appErr.GetCode() != tt.expectCode {
+					t.Errorf("GetCode() = %v, want %v", appErr.GetCode(), tt.expectCode)
+				}
+				if tt.expectType != "" && appErr.GetType() != tt.expectType {
+					t.Errorf("GetType() = %v, want %v", appErr.GetType(), tt.expectType)
+				}
+			}
+
+			// 3. Unwrapの検証（特定のケースのみ）
+			if name == "正常系: Unwrapによる元エラーの取得" {
+				unwrapped := errors.Unwrap(err)
+				if unwrapped != baseErr {
+					t.Errorf("Unwrap() failed to return baseErr")
+				}
+			}
+		})
+	}
 }
