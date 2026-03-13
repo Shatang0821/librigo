@@ -7,71 +7,77 @@ import (
 )
 
 func TestNewBook(t *testing.T) {
-	// テストケースの定義
+	// 正常系用の共通データ
+	vID, _ := book.NewBookID("550e8400-e29b-41d4-a716-446655440000")
+	vTitle, _ := book.NewBookTitle("テスト駆動開発")
+	vPrice, _ := book.NewBookPrice(3000)
+	vISBN, _ := book.NewBookISBN("978-4-0000-0000-0")
+
 	tests := map[string]struct {
-		id      string
-		title   string
-		price   int
-		isbn    string
+		id      book.BookID
+		title   book.BookTitle
+		price   book.BookPrice
+		isbn    book.BookISBN
 		wantErr error
 	}{
 		"正常系: 有効な入力": {
-			id:      "550e8400-e29b-41d4-a716-446655440000",
-			title:   "テスト駆動開発",
-			price:   3000,
-			isbn:    "978-4-0000-0000-0",
+			id:      vID,
+			title:   vTitle,
+			price:   vPrice,
+			isbn:    vISBN,
 			wantErr: nil,
 		},
+		"異常系: IDが空": {
+			id:      book.BookID{},
+			title:   vTitle,
+			price:   vPrice,
+			isbn:    vISBN,
+			wantErr: book.ErrInvalidBook,
+		},
 		"異常系: タイトルが空": {
-			id:      "550e8400-e29b-41d4-a716-446655440000",
-			title:   "",
-			price:   3000,
-			isbn:    "978-4-0000-0000-0",
-			wantErr: book.ErrInvalidBookTitle,
+			id:      vID,
+			title:   book.BookTitle{},
+			price:   vPrice,
+			isbn:    vISBN,
+			wantErr: book.ErrInvalidBook,
 		},
 		"異常系: ISBNが空": {
-			id:      "550e8400-e29b-41d4-a716-446655440000",
-			title:   "サンプル本",
-			price:   3000,
-			isbn:    "",
-			wantErr: book.ErrInvalidBookISBN,
-		},
-		"異常系: 価格がマイナス": {
-			id:      "550e8400-e29b-41d4-a716-446655440000",
-			title:   "サンプル本",
-			price:   -1,
-			isbn:    "978-4-0000-0000-0",
-			wantErr: book.ErrInvalidBookPrice,
+			id:      vID,
+			title:   vTitle,
+			price:   vPrice,
+			isbn:    book.BookISBN{},
+			wantErr: book.ErrInvalidBook,
 		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			// 並列実行
-			t.Parallel()
-
-			got, err := book.NewBook(book.BookID(tt.id), tt.title, tt.price, tt.isbn)
-
-			if !errors.Is(err, tt.wantErr) {
-				t.Errorf("NewBook() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
+			got, err := book.NewBook(tt.id, tt.title, tt.price, tt.isbn)
 
 			if tt.wantErr == nil {
-				if string(got.ID) != tt.id {
-					t.Errorf("expected ID %s, got %s", tt.id, got.ID)
+				if err != nil {
+					t.Fatalf("expected no error, but got: %v", err)
 				}
-				if got.Title != tt.title {
-					t.Errorf("expected Title %s, got %s", tt.title, got.Title)
+			} else {
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("errors.Is() = false, want true\n got: %v\n want: %v", err, tt.wantErr)
 				}
-				if got.Price != tt.price {
-					t.Errorf("expected Price %d, got %d", tt.price, got.Price)
+			}
+
+			if tt.wantErr == nil && got != nil {
+				if got.ID() != tt.id {
+					t.Errorf("expected ID %v, got %v", tt.id, got.ID())
 				}
-				if got.ISBN != tt.isbn {
-					t.Errorf("expected ISBN %s, got %s", tt.isbn, got.ISBN)
+				if got.Title() != tt.title {
+					t.Errorf("expected Title %v, got %v", tt.title, got.Title())
+				}
+				if got.Price() != tt.price {
+					t.Errorf("expected Price %v, got %v", tt.price, got.Price())
+				}
+				if got.ISBN() != tt.isbn {
+					t.Errorf("expected ISBN %v, got %v", tt.isbn, got.ISBN())
 				}
 			}
 		})
 	}
-
 }
