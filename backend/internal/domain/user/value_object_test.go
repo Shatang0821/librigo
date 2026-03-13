@@ -54,6 +54,16 @@ func TestValueObjects_MapDriven(t *testing.T) {
 			run:     func() (any, error) { return NewUserRole("superman") },
 			wantErr: ErrInvalidUserRole.Wrap(nil),
 		},
+
+		// --- UserHashedPassword ---
+		"正常: ハッシュ化されたパスワード": {
+			run:     func() (any, error) { return NewUserHashedPassword("hashed-password") },
+			wantVal: "hashed-password",
+		},
+		"異常: ハッシュ化されたパスワードが空": {
+			run:     func() (any, error) { return NewUserHashedPassword("") },
+			wantErr: ErrInvalidUserPassword.Wrap(nil),
+		},
 	}
 
 	for name, tt := range tests {

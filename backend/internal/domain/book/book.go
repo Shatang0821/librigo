@@ -38,16 +38,6 @@ func NewBook(id string, title string, price int, isbn string) (*Book, error) {
 	}, nil
 }
 
-// ReconstructBook は、DBなどから取得した既に検証済みのデータからエンティティを再構築します。
-func ReconstructBook(id BookID, title BookTitle, price BookPrice, isbn BookISBN) *Book {
-	return &Book{
-		id:    id,
-		title: title,
-		price: price,
-		isbn:  isbn,
-	}
-}
-
 // 外部から値を取得するための Getter メソッド群
 func (b *Book) ID() BookID       { return b.id }
 func (b *Book) Title() BookTitle { return b.title }

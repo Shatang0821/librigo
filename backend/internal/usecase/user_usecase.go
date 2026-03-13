@@ -64,34 +64,13 @@ func NewUserUseCase(repo userdomain.UserRepository, passwordHasher userdomain.Pa
 
 // ユーザの新規登録
 func (i *userInteractor) SignUp(ctx context.Context, in SignUpInput) (*SignUpOutput, error) {
-	// emailのバリデーションと正規化
-	email, err := userdomain.NewEmail(in.Email)
-	if err != nil {
-		return nil, err
-	}
-	// emailの重複をチェック
-	existingUser, _ := i.repo.FindByEmail(ctx, email)
-	if existingUser != nil {
-		return nil, userdomain.ErrDuplicateUser
-	}
-
-	// パスワードの強度をチェック
-	if err := userdomain.ValidatePassword(in.Password); err != nil {
-		return nil, err
-	}
-
-	// パスワードをハッシュ化
-	hashedPassword, err := i.passwordHasher.Hash(in.Password)
-	if err != nil {
-		return nil, err
-	}
-
+	// NewUser コンストラクタ内で Value Object への変換とバリデーションが行われます
 	newUser, err := userdomain.NewUser(
-		i.idGen.Generate(),
+		i.idGen.Generate().String(),
 		in.Name,
-		email,
-		hashedPassword,
-		userdomain.RoleMember, // デフォルトでMemberロールを設定
+		in.Email,
+		in.Password,
+		userdomain.RoleMember.String(), // デフォルトでMemberロールを設定
 	)
 	if err != nil {
 		return nil, err
@@ -103,9 +82,9 @@ func (i *userInteractor) SignUp(ctx context.Context, in SignUpInput) (*SignUpOut
 	}
 
 	return &SignUpOutput{
-		ID:    string(newUser.ID),
-		Name:  newUser.Name,
-		Email: string(newUser.Email),
+		ID:    newUser.ID().String(),
+		Name:  newUser.Name().String(),
+		Email: newUser.Email().String(),
 	}, nil
 }
 
@@ -126,7 +105,7 @@ func (i *userInteractor) SignIn(ctx context.Context, in SignInInput) (*SignInOut
 	}
 
 	// パスワードを検証
-	if err := i.passwordHasher.Compare(user.PasswordHash, in.Password); err != nil {
+	if err := i.passwordHasher.Compare(user.PasswordHash(), in.Password); err != nil {
 		return nil, userdomain.ErrInvalidCredentials
 	}
 
@@ -139,10 +118,10 @@ func (i *userInteractor) SignIn(ctx context.Context, in SignInInput) (*SignInOut
 	return &SignInOutput{
 		Token: token,
 		User: &UserOutput{
-			ID:    string(user.ID),
-			Name:  user.Name,
-			Email: string(user.Email),
-			Role:  user.Role,
+			ID:    user.ID().String(),
+			Name:  user.Name().String(),
+			Email: user.Email().String(),
+			Role:  user.Role(),
 		},
 	}, nil
 }
@@ -161,25 +140,29 @@ func (i *userInteractor) GetUserByEmail(ctx context.Context, emails string) (*Us
 	}
 
 	return &UserOutput{
-		ID:    string(user.ID),
-		Name:  user.Name,
-		Email: string(user.Email),
-		Role:  user.Role,
+		ID:    user.ID().String(),
+		Name:  user.Name().String(),
+		Email: user.Email().String(),
+		Role:  user.Role(),
 	}, nil
 }
 
 // IDでユーザを取得
 func (i *userInteractor) GetUserByID(ctx context.Context, id string) (*UserOutput, error) {
-	user, err := i.repo.FindByID(ctx, userdomain.UserID(id))
+	userId, err := userdomain.NewUserID(id)
+	if err != nil {
+		return nil, err
+	}
+	user, err := i.repo.FindByID(ctx, userId)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &UserOutput{
-		ID:    string(user.ID),
-		Name:  user.Name,
-		Email: string(user.Email),
-		Role:  user.Role,
+		ID:    user.ID().String(),
+		Name:  user.Name().String(),
+		Email: user.Email().String(),
+		Role:  user.Role(),
 	}, nil
 }

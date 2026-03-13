@@ -45,7 +45,13 @@ func NewBookUseCase(repo bookdomain.BookRepository, idGen bookdomain.IDGenerator
 
 func (i *bookInteractor) CreateBook(ctx context.Context, input CreateBookInput) (*CreateBookOutput, error) {
 	// ドメインモデルの生成
-	book, err := bookdomain.NewBook(i.idGen.Generate(), input.Title, input.Price, input.ISBN)
+	// NewBook コンストラクタ内で Value Object への変換とバリデーションが行われます
+	book, err := bookdomain.NewBook(
+		i.idGen.Generate().String(),
+		input.Title,
+		input.Price,
+		input.ISBN,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +63,8 @@ func (i *bookInteractor) CreateBook(ctx context.Context, input CreateBookInput) 
 
 	// 出力データの生成
 	return &CreateBookOutput{
-		ID:    string(book.ID),
-		Title: book.Title,
+		ID:    book.ID().String(),
+		Title: book.Title().String(),
 	}, nil
 }
 
@@ -71,25 +77,29 @@ func (i *bookInteractor) GetAllBooks(ctx context.Context) ([]*BookOutput, error)
 	var outputs []*BookOutput
 	for _, b := range books {
 		outputs = append(outputs, &BookOutput{
-			ID:    string(b.ID),
-			Title: b.Title,
-			Price: b.Price,
-			ISBN:  b.ISBN,
+			ID:    string(b.ID().String()),
+			Title: b.Title().String(),
+			Price: b.Price().Int(),
+			ISBN:  b.ISBN().String(),
 		})
 	}
 	return outputs, nil
 }
 
 func (i *bookInteractor) GetBookByID(ctx context.Context, id string) (*BookOutput, error) {
-	book, err := i.repo.FindByID(ctx, bookdomain.BookID(id))
+	bookId, err := bookdomain.NewBookID(id)
+	if err != nil {
+		return nil, err
+	}
+	book, err := i.repo.FindByID(ctx, bookId)
 	if err != nil {
 		return nil, err
 	}
 
 	return &BookOutput{
-		ID:    string(book.ID),
-		Title: book.Title,
-		Price: book.Price,
-		ISBN:  book.ISBN,
+		ID:    string(book.ID().String()),
+		Title: book.Title().String(),
+		Price: book.Price().Int(),
+		ISBN:  book.ISBN().String(),
 	}, nil
 }

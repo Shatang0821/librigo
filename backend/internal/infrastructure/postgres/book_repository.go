@@ -19,17 +19,19 @@ func NewBookRepository(db *sql.DB) bookdomain.BookRepository {
 
 func (r *BookRepository) Save(ctx context.Context, book *bookdomain.Book) error {
 	query := `INSERT INTO books (id, title, price, isbn) VALUES ($1, $2, $3, $4)`
-	_, err := r.db.ExecContext(ctx, query, book.ID, book.Title, book.Price, book.ISBN)
+	_, err := r.db.ExecContext(ctx, query,
+		book.ID().String(),
+		book.Title().String(),
+		book.Price().Int(),
+		book.ISBN().String(),
+	)
 	if err != nil {
-		// PostgreSQLの固有エラーかどうかをチェック
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
-			// "23505" は unique_violation (一意制約違反) のコードです
 			if pgErr.Code == "23505" {
 				return bookdomain.ErrDuplicateBook
 			}
 		}
-		// それ以外のエラー（接続不良など）はそのまま返す
 		return err
 	}
 	return nil
@@ -38,16 +40,23 @@ func (r *BookRepository) Save(ctx context.Context, book *bookdomain.Book) error 
 func (r *BookRepository) FindByID(ctx context.Context, id bookdomain.BookID) (*bookdomain.Book, error) {
 	query := `SELECT id, title, price, isbn FROM books WHERE id = $1`
 
-	var book bookdomain.Book
+	var (
+		resID    string
+		resTitle string
+		resPrice int
+		resISBN  string
+	)
 
-	err := r.db.QueryRowContext(ctx, query, id).Scan(&book.ID, &book.Title, &book.Price, &book.ISBN)
+	err := r.db.QueryRowContext(ctx, query, id.String()).Scan(&resID, &resTitle, &resPrice, &resISBN)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, bookdomain.ErrBookNotFound // 見つからない場合は bookdomain.ErrBookNotFound を返す
+			return nil, bookdomain.ErrBookNotFound
 		}
 		return nil, err
 	}
-	return &book, nil
+
+	// DBからの取得なので NewBook でバリデーションをかけつつ生成
+	return bookdomain.NewBook(resID, resTitle, resPrice, resISBN)
 }
 
 func (r *BookRepository) FindAll(ctx context.Context) ([]*bookdomain.Book, error) {
@@ -60,11 +69,21 @@ func (r *BookRepository) FindAll(ctx context.Context) ([]*bookdomain.Book, error
 
 	var books []*bookdomain.Book
 	for rows.Next() {
-		var book bookdomain.Book
-		if err := rows.Scan(&book.ID, &book.Title, &book.Price, &book.ISBN); err != nil {
+		var (
+			resID    string
+			resTitle string
+			resPrice int
+			resISBN  string
+		)
+		if err := rows.Scan(&resID, &resTitle, &resPrice, &resISBN); err != nil {
 			return nil, err
 		}
-		books = append(books, &book)
+
+		book, err := bookdomain.NewBook(resID, resTitle, resPrice, resISBN)
+		if err != nil {
+			return nil, err
+		}
+		books = append(books, book)
 	}
 	return books, nil
 }
