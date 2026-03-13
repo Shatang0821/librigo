@@ -1,5 +1,7 @@
 package apperror
 
+import "fmt"
+
 type ErrorType string
 
 const (
@@ -26,39 +28,48 @@ func (d *ErrorDef) Error() string {
 	return d.Code
 }
 
-func (d *ErrorDef) WithError(err error) *AppError {
+// エラー定義をラップしてAppErrorを生成する
+func (d *ErrorDef) Wrap(err error) *AppError {
 	return &AppError{
-		Err: err,
-		Def: d,
+		Def:   d,
+		Cause: err,
 	}
 }
 
 type AppError struct {
-	Err error
-	Def *ErrorDef
+	Def   *ErrorDef
+	Cause error
 }
 
 func (e *AppError) Error() string {
-	return e.Err.Error()
+	if e.Cause != nil {
+		return fmt.Sprintf("%s: %v", e.Def.Code, e.Cause)
+	}
+	return e.Def.Code
 }
 
 func (e *AppError) Unwrap() error {
-	return e.Err
+	return e.Cause
 }
 
 func (e *AppError) Is(target error) bool {
-	if t, ok := target.(*ErrorDef); ok {
-		return e.Def.Code == t.Code // 自分のコードと定数のコードが一致するか？
+	switch t := target.(type) {
+
+	case *ErrorDef:
+		return e.Def == t
+
+	case *AppError:
+		return e.Def == t.Def
 	}
 
 	return false
 }
 
-func (e *AppError) GetCode() string {
+func (e *AppError) Code() string {
 	return e.Def.Code
 }
 
-func (e *AppError) GetType() ErrorType {
+func (e *AppError) Type() ErrorType {
 	return e.Def.ErrType
 }
 

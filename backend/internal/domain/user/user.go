@@ -19,7 +19,7 @@ type User struct {
 
 func NewUser(id UserID, name UserName, email UserEmail, passwordHash UserHashedPassword, role UserRole) (*User, error) {
 	if id.value == "" || name.value == "" || email.value == "" || passwordHash.value == "" || role.value == "" {
-		return nil, ErrInvalidUser.WithError(errors.New("User fields cannot be empty"))
+		return nil, ErrInvalidUser.Wrap(errors.New("User fields cannot be empty"))
 	}
 
 	return &User{

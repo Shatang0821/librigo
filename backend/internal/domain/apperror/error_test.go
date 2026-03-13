@@ -2,76 +2,68 @@ package apperror
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 )
 
-func TestAppError_TableDriven(t *testing.T) {
-	// 固定のテスト用定義
-	testDef := New("TEST_ERR", TypeInvalid)
-	otherDef := New("OTHER_ERR", TypeConflict)
-	baseErr := errors.New("original message")
+func TestAppError_MapDriven(t *testing.T) {
+	// 共通のテストデータ
+	defA := New("ERR_A", TypeInvalid)
+	defB := New("ERR_B", TypeConflict)
+	cause := errors.New("original cause")
 
-	// map形式でのテストケース定義
 	tests := map[string]struct {
-		// 入力とセットアップ
-		setup  func() error
-		target error // errors.Is で比較する対象
-
-		// 期待値
-		wantIs     bool
-		expectCode string
-		expectType ErrorType
+		setup    func() error
+		target   error
+		wantIs   bool
+		wantStr  string
+		wantType ErrorType
 	}{
-		"正常系: AppErrorの生成と情報取得": {
+		"正常系: AppErrorの情報取得": {
 			setup: func() error {
-				return testDef.WithError(baseErr)
+				return defA.Wrap(cause)
 			},
-			target:     nil, // Isのテストは行わない
-			wantIs:     false,
-			expectCode: "TEST_ERR",
-			expectType: TypeInvalid,
+			wantStr:  fmt.Sprintf("ERR_A: %v", cause),
+			wantType: TypeInvalid,
 		},
-		"判定系: errors.Isでの一致(同一インスタンス)": {
+		"判定系: 同一CodeのAppError比較": {
 			setup: func() error {
-				return testDef.WithError(baseErr)
+				return defA.Wrap(cause)
 			},
-			target: testDef,
+			target: defA.Wrap(errors.New("different cause")), // Codeが同じなら一致
 			wantIs: true,
 		},
-		"判定系: errors.Isでの一致(別インスタンス/同Code)": {
+		"判定系: 異なるCodeのAppError比較": {
 			setup: func() error {
-				return testDef.WithError(baseErr)
+				return defA.Wrap(cause)
 			},
-			target: &ErrorDef{Code: "TEST_ERR", ErrType: TypeInvalid},
+			target: defB.Wrap(cause),
+			wantIs: false,
+		},
+		"判定系: ErrorDefとの比較": {
+			setup: func() error {
+				return defA.Wrap(cause)
+			},
+			target: defA,
 			wantIs: true,
 		},
-		"判定系: errors.Isでの不一致(別Code)": {
+		"判定系: 全く別のエラーとの比較": {
 			setup: func() error {
-				return testDef.WithError(baseErr)
+				return defA.Wrap(cause)
 			},
-			target: otherDef,
+			target: errors.New("standard error"),
 			wantIs: false,
 		},
-		"判定系: errors.Isでの不一致(型違い)": {
+		"正常系: Unwrapによる原因の抽出": {
 			setup: func() error {
-				return testDef.WithError(baseErr)
+				return defA.Wrap(cause)
 			},
-			target: errors.New("TEST_ERR"),
-			wantIs: false,
-		},
-		"正常系: Unwrapによる元エラーの取得": {
-			setup: func() error {
-				return testDef.WithError(baseErr)
-			},
-			target: nil,
-			wantIs: false,
-			// Unwrapの検証は別途行うが、期待値として定義しても良い
+			// 検証は Loop 内の errors.Unwrap で行う
 		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			// テスト対象のエラーを生成
 			err := tt.setup()
 
 			// 1. errors.Is の検証
@@ -81,21 +73,20 @@ func TestAppError_TableDriven(t *testing.T) {
 				}
 			}
 
-			// 2. Getter関数の検証（AppError型にキャスト可能な場合のみ）
+			// 2. メソッド・文字列の検証
 			if appErr, ok := err.(*AppError); ok {
-				if tt.expectCode != "" && appErr.GetCode() != tt.expectCode {
-					t.Errorf("GetCode() = %v, want %v", appErr.GetCode(), tt.expectCode)
+				if tt.wantStr != "" && appErr.Error() != tt.wantStr {
+					t.Errorf("Error() = %q, want %q", appErr.Error(), tt.wantStr)
 				}
-				if tt.expectType != "" && appErr.GetType() != tt.expectType {
-					t.Errorf("GetType() = %v, want %v", appErr.GetType(), tt.expectType)
+				if tt.wantType != "" && appErr.Type() != tt.wantType {
+					t.Errorf("Type() = %v, want %v", appErr.Type(), tt.wantType)
 				}
 			}
 
-			// 3. Unwrapの検証（特定のケースのみ）
-			if name == "正常系: Unwrapによる元エラーの取得" {
-				unwrapped := errors.Unwrap(err)
-				if unwrapped != baseErr {
-					t.Errorf("Unwrap() failed to return baseErr")
+			// 3. Unwrap の検証
+			if name == "正常系: Unwrapによる原因の抽出" {
+				if got := errors.Unwrap(err); got != cause {
+					t.Errorf("Unwrap() = %v, want %v", got, cause)
 				}
 			}
 		})

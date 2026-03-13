@@ -23,7 +23,7 @@ type UserID struct{ value string }
 
 func NewUserID(v string) (UserID, error) {
 	if v == "" {
-		return UserID{}, ErrInvalidUserID.WithError(errors.New("User ID can not be empty"))
+		return UserID{}, ErrInvalidUserID.Wrap(errors.New("User ID can not be empty"))
 	}
 	return UserID{value: v}, nil
 }
@@ -37,7 +37,7 @@ type UserName struct{ value string }
 
 func NewUserName(v string) (UserName, error) {
 	if v == "" {
-		return UserName{}, ErrInvalidUserName.WithError(errors.New("User name can not be empty"))
+		return UserName{}, ErrInvalidUserName.Wrap(errors.New("User name can not be empty"))
 	}
 	return UserName{value: v}, nil
 }
@@ -54,7 +54,7 @@ func NewEmail(v string) (UserEmail, error) {
 
 	addr, err := mail.ParseAddress(trimmed)
 	if err != nil {
-		return UserEmail{}, ErrInvalidUserEmail.WithError(errors.New("User email can not be empty"))
+		return UserEmail{}, ErrInvalidUserEmail.Wrap(errors.New("User email can not be empty"))
 	}
 	return UserEmail{value: addr.Address}, nil
 }
@@ -75,7 +75,7 @@ func NewUserRawPassword(v string) (UserRawPassword, error) {
 
 	// 長さチェック
 	if len(v) < 8 {
-		return UserRawPassword{}, ErrWeakUserPassword.WithError(errors.New("password must be at least 8 characters"))
+		return UserRawPassword{}, ErrWeakUserPassword.Wrap(errors.New("password must be at least 8 characters"))
 	}
 
 	// 文字種チェック（一回のループで判定）
@@ -93,7 +93,7 @@ func NewUserRawPassword(v string) (UserRawPassword, error) {
 	// 3. 全ての条件を満たしているか判定
 	// 要件に応じて「記号は任意」とするなら hasSpecial は外してもOKです
 	if !hasUpper || !hasLower || !hasDigit {
-		return UserRawPassword{}, ErrWeakUserPassword.WithError(
+		return UserRawPassword{}, ErrWeakUserPassword.Wrap(
 			errors.New("password must contain uppercase, lowercase and digits"),
 		)
 	}
@@ -109,7 +109,7 @@ type UserHashedPassword struct{ value string }
 
 func NewUserHashedPassword(v string) (UserHashedPassword, error) {
 	if v == "" {
-		return UserHashedPassword{}, ErrInvalidUserPassword.WithError(errors.New("User password can not be empty"))
+		return UserHashedPassword{}, ErrInvalidUserPassword.Wrap(errors.New("User password can not be empty"))
 	}
 	return UserHashedPassword{value: v}, nil
 }
@@ -134,7 +134,7 @@ func NewUserRole(v string) (UserRole, error) {
 	case "member":
 		return RoleMember, nil
 	default:
-		return UserRole{}, ErrInvalidUserRole.WithError(errors.New("Unknown user role: " + v))
+		return UserRole{}, ErrInvalidUserRole.Wrap(errors.New("Unknown user role: " + v))
 	}
 }
 
