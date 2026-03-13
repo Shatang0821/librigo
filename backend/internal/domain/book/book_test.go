@@ -8,45 +8,52 @@ import (
 
 func TestNewBook(t *testing.T) {
 	// 正常系用の共通データ
-	vID, _ := book.NewBookID("550e8400-e29b-41d4-a716-446655440000")
-	vTitle, _ := book.NewBookTitle("テスト駆動開発")
-	vPrice, _ := book.NewBookPrice(3000)
-	vISBN, _ := book.NewBookISBN("978-4-0000-0000-0")
+	validID := "550e8400-e29b-41d4-a716-446655440000"
+	validTitle := "テスト駆動開発"
+	validPrice := 3000
+	validISBN := "978-4-0000-0000-0"
 
 	tests := map[string]struct {
-		id      book.BookID
-		title   book.BookTitle
-		price   book.BookPrice
-		isbn    book.BookISBN
+		id      string
+		title   string
+		price   int
+		isbn    string
 		wantErr error
 	}{
 		"正常系: 有効な入力": {
-			id:      vID,
-			title:   vTitle,
-			price:   vPrice,
-			isbn:    vISBN,
+			id:      validID,
+			title:   validTitle,
+			price:   validPrice,
+			isbn:    validISBN,
 			wantErr: nil,
 		},
 		"異常系: IDが空": {
-			id:      book.BookID{},
-			title:   vTitle,
-			price:   vPrice,
-			isbn:    vISBN,
-			wantErr: book.ErrInvalidBook,
+			id:      "",
+			title:   validTitle,
+			price:   validPrice,
+			isbn:    validISBN,
+			wantErr: book.ErrInvalidBookID,
 		},
 		"異常系: タイトルが空": {
-			id:      vID,
-			title:   book.BookTitle{},
-			price:   vPrice,
-			isbn:    vISBN,
-			wantErr: book.ErrInvalidBook,
+			id:      validID,
+			title:   "",
+			price:   validPrice,
+			isbn:    validISBN,
+			wantErr: book.ErrInvalidBookTitle,
+		},
+		"異常系: 価格がマイナス": {
+			id:      validID,
+			title:   validTitle,
+			price:   -1,
+			isbn:    validISBN,
+			wantErr: book.ErrInvalidBookPrice,
 		},
 		"異常系: ISBNが空": {
-			id:      vID,
-			title:   vTitle,
-			price:   vPrice,
-			isbn:    book.BookISBN{},
-			wantErr: book.ErrInvalidBook,
+			id:      validID,
+			title:   validTitle,
+			price:   validPrice,
+			isbn:    "",
+			wantErr: book.ErrInvalidBookISBN,
 		},
 	}
 
@@ -65,17 +72,17 @@ func TestNewBook(t *testing.T) {
 			}
 
 			if tt.wantErr == nil && got != nil {
-				if got.ID() != tt.id {
-					t.Errorf("expected ID %v, got %v", tt.id, got.ID())
+				if got.ID().String() != tt.id {
+					t.Errorf("expected ID %v, got %v", tt.id, got.ID().String())
 				}
-				if got.Title() != tt.title {
-					t.Errorf("expected Title %v, got %v", tt.title, got.Title())
+				if got.Title().String() != tt.title {
+					t.Errorf("expected Title %v, got %v", tt.title, got.Title().String())
 				}
-				if got.Price() != tt.price {
-					t.Errorf("expected Price %v, got %v", tt.price, got.Price())
+				if got.Price().Int() != tt.price {
+					t.Errorf("expected Price %v, got %v", tt.price, got.Price().Int())
 				}
-				if got.ISBN() != tt.isbn {
-					t.Errorf("expected ISBN %v, got %v", tt.isbn, got.ISBN())
+				if got.ISBN().String() != tt.isbn {
+					t.Errorf("expected ISBN %v, got %v", tt.isbn, got.ISBN().String())
 				}
 			}
 		})

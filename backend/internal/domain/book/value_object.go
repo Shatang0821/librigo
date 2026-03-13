@@ -6,6 +6,7 @@ import (
 )
 
 var (
+	ErrInvalidBookID    = apperror.New("INVALID_BOOK_ID", apperror.TypeInvalid)
 	ErrInvalidBookTitle = apperror.New("INVALID_BOOK_TITLE", apperror.TypeInvalid)
 	ErrInvalidBookPrice = apperror.New("INVALID_BOOK_PRICE", apperror.TypeInvalid)
 	ErrInvalidBookISBN  = apperror.New("INVALID_BOOK_ISBN", apperror.TypeInvalid)
@@ -16,7 +17,7 @@ type BookID struct{ value string }
 
 func NewBookID(v string) (BookID, error) {
 	if v == "" {
-		return BookID{}, ErrInvalidBookISBN.Wrap(errors.New("book ID can not be empty"))
+		return BookID{}, ErrInvalidBookID.Wrap(errors.New("book ID can not be empty"))
 	}
 	return BookID{value: v}, nil
 }
